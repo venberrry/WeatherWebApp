@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Прогноз погоды</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Прогноз погоды</h1>
+    <form id="city-form" method="POST">
+        {% csrf_token %}
+        <label for="city">Введите название города:</label>
+        <input type="text" id="city" name="city" value="{{ city }}">
+        <button type="submit">Получить прогноз</button>
+    </form>
+
+    {% if city %}
+        <h2>Город: {{ city }}</h2>
+        <h3>Часовой пояс: {{ timezone }}</h3>
+        <h2>Текущая погода</h2>
+        <ul>
+            <li>Температура: {{ current_weather.Temperature }}°C</li>
+            <li>Дождь: {{ current_weather.Rain }} мм</li>
+            <li>Скорость ветра: {{ current_weather.Wind_Speed }} м/с</li>
+        </ul>
+        <h2>Прогноз на неделю</h2>
+        {{ weekly_forecast|safe }}
+    {% endif %}
+
+    <script>
+        $(document).ready(function() {
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            const csrftoken = getCookie('csrftoken');
+
+            <!-- Сохранение и загрузка истории поиска -->
+            function loadSearchHistory() {
+                let history = JSON.parse(localStorage.getItem('searchHistory')) || [];
+                return history;
+            }
+
+            function saveSearchHistory(history) {
+                localStorage.setItem('searchHistory', JSON.stringify(history));
+            }
+
+            <!-- Добавление в лист в localstorage города -->
+            function updateCityList(history) {
+                let cityList = $('#city-list');
+                cityList.empty();
+                $.each(history, function(index, value) {
+                    cityList.append('<option value="' + value + '">' + value + '</option>');
+                });
+            }
+
+            <!-- Слушатель формы ввода -->
+            $('#city-form').on('submit', function(event) {
+                event.preventDefault();
+                let city = $('#city').val().trim();
+                if (city) {
+                    let history = loadSearchHistory();
+                    if (!history.includes(city)) {
+                        history.push(city);
+                        saveSearchHistory(history);
+                    }
+                    $.ajax({
+                        type: 'POST',
+                        url: '',  // URL текущей страницы
+                        data: {
+                            city: city,
+                            csrfmiddlewaretoken: csrftoken
+                        },
+                        success: function(response) {
+                            $('body').html(response);
+                        }
+                    });
+                }
+            });
+
+            let history = loadSearchHistory();
+            if (history.length > 0) {
+                $('#city').val(history[history.length - 1]);
+            }
+            updateCityList(history);
+        });
+    </script>
+</body>
+</html>
